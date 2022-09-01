@@ -44,8 +44,12 @@ jobs:
   # Build and push the radosgw container using the radosgw-binary
   # TODO
 
-  # Build and push the ui container
-  # TODO
+      # Build and push the ui container
+      - name: Build and Push S3GW UI
+        uses: ./ui/.github/workflows/build.yaml
+        with:
+          tag: ${{ steps.git-refs.outputs.github-ref-name }}
+          ref: ${{ steps.git-refs.outputs.ui-git-ref }}
 
   # Release the charts
   # TODO
