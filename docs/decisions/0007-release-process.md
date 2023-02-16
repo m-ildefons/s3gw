@@ -172,142 +172,187 @@ release candidate was properly validated, version `vX.Y.1` was released.
 
 ## Step-by-Step Release Process
 
-1. For each sub-project repository, and for the `s3gw` repository, branch off
-   `main` to a new release branch. This can be achieved via the GitHub web
-   UI[^1], or by pushing the new branch to the repository via the CLI[^2].
-   Release branch names follow the `s3gw-vX.Y` convention.
+### Step 1
 
-2. For sub-project `s3gw-ui`, `s3gw-tools`, and `ceph`, tag the release branch
-   as a release candidate[^3]. We do not tag the `s3gw-charts` repository
-   because that would trigger a release workflow that we don't want to trigger
-   at this time[^4]. The following example assumes `upstream` as the source remote
-   for a given sub-project, and `v0.11` as the version being released. Keep in
-   mind that when tagging, creating a signed and annotated tag[^5] is crucial.
+For each sub-project repository, and for the `s3gw` repository, branch off
+`main` to a new release branch. This can be achieved via the GitHub web
+UI[^1], or by pushing the new branch to the repository via the CLI[^2].
+Release branch names follow the `s3gw-vX.Y` convention.
 
-   ```shell
-   git checkout upstream/s3gw-v0.11 -b s3gw-v0.11
-   git tag --annotate --sign -m "Release Candidate 1 for v0.11.0" s3gw-v0.11.0-rc1
-   git push upstream s3gw-v0.11.0-rc1
-   ```
+### Step 2
 
-3. In the `s3gw` repository's newly created release branch, update the various
-   sub-projects' state to reflect the now existing tags. This can be achieved in
-   by checking out the appropriate tag on each individual sub-project's
-   submodule directory. A commit will be necessary to persist the
-   changes. The following shows an trimmed example of what to do.
+For sub-project `s3gw-ui`, `s3gw-tools`, and `ceph`, tag the release branch
+as a release candidate[^3]. We do not tag the `s3gw-charts` repository
+because that would trigger a release workflow that we don't want to trigger
+at this time[^4]. The following example assumes `upstream` as the source remote
+for a given sub-project, and `v0.11` as the version being released. Keep in
+mind that when tagging, creating a signed and annotated tag[^5] is crucial.
 
-   ```shell
-   # in the root of the s3gw repo, branch s3gw-v0.11
-   cd ceph/
-   git remote update
-   git checkout origin/s3gw-v0.11.0-rc1
-   cd ..
-   git add ceph/
+```
+git checkout upstream/s3gw-v0.11 -b s3gw-v0.11
+git tag --annotate --sign -m "Release Candidate 1 for v0.11.0" s3gw-v0.11.0-rc1
+git push upstream s3gw-v0.11.0-rc1
+```
 
-   # repeat for the several other sub-projects
+### Step 3
 
-   git commit -s -S -m "update submodules for v0.11.0-rc1"
-   git submodule update --init --remote --sync
-   ```
+In the `s3gw` repository's newly created release branch, update the various
+sub-projects' state to reflect the now existing tags. This can be achieved in
+by checking out the appropriate tag on each individual sub-project's
+submodule directory. A commit will be necessary to persist the
+changes. The following shows an trimmed example of what to do.
 
-4. Tag the `s3gw` repository with the appropriate release candidate tag.
+```
+# In the root of the `s3gw` repo, branch `s3gw-v0.11`:
+cd ceph/
+git remote update
+git checkout origin/s3gw-v0.11.0-rc1
+cd ..
+git add ceph/
 
-   ```shell
-   git tag --annotate --sign -m "Release Candidate 1 for v0.11.0" s3gw-v0.11.0-rc1
-   ```
+# repeat for the several other sub-projects:
+git commit -s -S -m "update submodules for v0.11.0-rc1"
+git submodule update --init --remote --sync
+```
 
-5. Push the release branch and tag. This will trigger the release pipeline,
-   creating the various release artifacts and a draft release.
+### Step 4
 
-   ```shell
-   git push upstream s3gw-v0.11
-   ```
+Tag the `s3gw` repository with the appropriate release candidate tag.
 
-6. Once the containers have been created and pushed to Quay, it's time to start
-   validating the release candidate. Please refer to the
-   [Testing Section](#testing) before continuing.
+```
+git tag --annotate --sign -m "Release Candidate 1 for v0.11.0" v0.11.0-rc1
+```
 
-7. If any patches needed to be backported at some point since the last release
-   candidate, please go back to `step 2.` and increase the release candidate
-   version by `1` (i.e., `-rc2`, `-rc3`, etc.). Even if a particular sub-project
-   repository has not been changed, it is still crucial to tag it with the new
-   release candidate version, for consistency across repositories.
+### Step 5
 
-8. Assuming everything goes well, we can now go through step `2.` but, instead
-   of tagging for a release candidate version, we will be tagging for the
-   release version.
+Push the release branch and tag. This will trigger the release pipeline,
+creating the various release artifacts and a draft release.
 
-   ```shell
-   git tag --annotate --sign -m "Release v0.11.0" s3gw-v0.11.0
-   git push upstream s3gw-v0.11
-   ```
+```
+git push upstream s3gw-v0.11 --tags
+```
 
-9. At this point we will need to update the Helm Chart to reflect the release
-   version. This becomes bit tricky, because we want the change to be reflected
-   in both the `main` branch and the `s3gw-vX.Y` branch on the `s3gw-charts`
-   repository. To do this, we will apply a patch to the `main` branch, and then
-   backport the change to the release branch.
+### Step 6
 
-   First, for `v0.11.0`, the chart version needs to be updated with the specific
-   version, at `charts/s3gw/Chart.yaml`. This change should then be committed,
-   and a Pull Request of this change opened against `main`.
+Once the containers have been created and pushed to Quay, it's time to start
+validating the release candidate. Please refer to the
+[Testing Section](#testing) before continuing.
 
-   Once the Pull Request has been merged, note down the new commit's `SHA`;
-   running `git log` should give you its value. We can now change to the
-   `s3gw-v0.11` branch, and `cherry-pick` the commit, and finally tag the branch
-   with the release version.
+### Step 7
 
-   ```shell
-   git cherry-pick -x -s -S <SHA>
-   git tag --annotate --sign -m "Release v0.11.0" s3gw-v0.11.0
-   git push upstream s3gw-v0.11
-   ```
+If any patches needed to be backported at some point since the last release
+candidate, please go back to `step 2.` and increase the release candidate
+version by `1` (i.e., `-rc2`, `-rc3`, etc.). Even if a particular sub-project
+repository has not been changed, it is still crucial to tag it with the new
+release candidate version, for consistency across repositories.
 
-10. With all sub-project repositories ready to be released, it's time to prepare
-    the `s3gw` repository for a release. Much like what we did for the
-    `s3gw-charts` repository, we will have to apply a patch on the `main` branch
-    first, and then backport it to the release branch: this time to keep track
-    of the `CHANGELOG`.
+### Step 8
 
-    First step, we need to go to the [Current CHANGELOG][8] page on the
-    repository's Wiki, and copy the contents for the release version being
-    handled to a file at `docs/release-notes/s3gw-vX.Y.Z.md`. Keep in mind the
-    release notes should be easily consumable by a human. Feel free to take
-    inspiration on previous release notes, and maintain consistency with them.
-    We should also ensure the symbolic link at
-    `docs/release-notes/s3gw-latest.md` is updated to point to the newly created
-    file. It is crucial that the resulting commit includes these two changes.
+Assuming everything goes well, we can now go through step `2.` but, instead
+of tagging for a release candidate version, we will be tagging for the
+release version.
 
-    Creating a Pull Request against `s3gw`'s `main` branch is the next step.
-    Once that has been merged, note down the new commit's `SHA`, go back to the
-    `s3gw-vX.Y` branch, and cherry-pick the commit, tagging the branch with for
-    our specific release.
+```
+git tag --annotate --sign -m "Release v0.11.0" v0.11.0
+git push upstream s3gw-v0.11 --tags
+```
 
-    ```shell
-    git cherry-pick -x -s -S <SHA>
-    git tag --annotate --sign -m "Release v0.11.0" s3gw-v0.11.0
-    git push upstream s3gw-v0.11
-    ```
+### Step 9
 
-    By pushing the branch with the release tag, we will trigger the release
-    workflow that will build the various release artifacts and publish the
-    containers on Quay.
+At this point we will need to update the Helm Chart to reflect the release
+version. This becomes bit tricky, because we want the change to be reflected
+in both the `main` branch and the `s3gw-vX.Y` branch on the `s3gw-charts`
+repository. To do this, we will apply a patch to the `main` branch, and then
+backport the change to the release branch.
 
-11. During the release workflow, a [release draft][9] will be created. Once the
-    release artifacts have finished building, and have been published on Quay,
-    we can then copy the contents of the release notes file we created in
-    step `10.`, and make the release draft public.
+First, for `v0.11.0`, the chart version needs to be updated with the specific
+version, at `charts/s3gw/Chart.yaml`. This change should then be committed,
+and a Pull Request of this change opened against `main`.
 
-    It is advised that before making the release draft public, the list in
-    [Sanity Checks](#sanity-checks) be ensured to hold true.
+Once the Pull Request has been merged, note down the new commit's `SHA`;
+running `git log` should give you its value. We can now change to the
+`s3gw-v0.11` branch, and `cherry-pick` the commit, and finally tag the branch
+with the release version.
 
-12. With the release now complete, it is time to shout about it from the
-    rooftops. A release announcement should now be sent to the various
-    communication channels being used by the project.
+```
+git cherry-pick -x -s -S <SHA>
+git tag --annotate --sign -m "Release v0.11.0" s3gw-v0.11.0
+git push upstream s3gw-v0.11
+```
 
-    - rancher-users Slack channel `#s3gw`
-    - SUSE Slack channel `#discuss-s3gw`
-    - project mailing list at `s3gw@suse.com`
+### Step 10
+
+With all sub-project repositories ready to be released, it's time to prepare
+the `s3gw` repository for a release. Much like what we did for the
+`s3gw-charts` repository, we will have to apply a patch on the `main` branch
+first, and then backport it to the release branch: this time to keep track
+of the `CHANGELOG`.
+
+First step, we need to go to the [Current CHANGELOG][8] page on the
+repository's Wiki, and copy the contents for the release version being
+handled to a file at `docs/release-notes/s3gw-vX.Y.Z.md`. Keep in mind the
+release notes should be easily consumable by a human. Feel free to take
+inspiration on previous release notes, and maintain consistency with them.
+We should also ensure the symbolic link at
+`docs/release-notes/s3gw-latest.md` is updated to point to the newly created
+file. It is crucial that the resulting commit includes these two changes.
+
+Creating a Pull Request against `s3gw`'s `main` branch is the next step.
+Once that has been merged, note down the new commit's `SHA`, go back to the
+`s3gw-vX.Y` branch, and cherry-pick the commit, tagging the branch with for
+our specific release.
+
+```shell
+git cherry-pick -x -s -S <SHA>
+git tag --annotate --sign -m "Release v0.11.0" s3gw-v0.11.0
+git push upstream s3gw-v0.11
+```
+
+By pushing the branch with the release tag, we will trigger the release
+workflow that will build the various release artifacts and publish the
+containers on Quay.
+
+### Step 11
+
+During the release workflow, a [release draft][9] will be created. Once the
+release artifacts have finished building, and have been published on Quay,
+we can then copy the contents of the release notes file we created in
+step `10.`, and make the release draft public.
+
+It is advised that before making the release draft public, the list in
+[Sanity Checks](#sanity-checks) be ensured to hold true.
+
+### Step 12
+
+With the release now complete, it is time to shout about it from the
+rooftops. A release announcement should now be sent to the various
+communication channels being used by the project.
+
+- rancher-users Slack channel `#s3gw`
+- SUSE Slack channel `#discuss-s3gw`
+- project mailing list at `s3gw@suse.com`
+
+### [Sanity Checks](sanity-checks)
+
+- [ ] `s3gw` container has been published on Quay for `vX.Y.Z`.
+- [ ] `s3gw-ui` container has been published on Quay for `vX.Y.Z`.
+- [ ] both containers are appropriately tagged with `vX.Y.Z` on Quay.
+- [ ] both containers are tagged with `latest` on Quay.
+- [ ] `latest` version containers are the same as the `vX.Y.Z` containers on
+      Quay.
+- [ ] Helm Chart has been properly updated for `vX.Y.Z`.
+- [ ] Helm Chart for `vX.Y.Z` is visible on [ArtifactHub][10]. This can take
+      about 20 minutes.
+- [ ] The release notes are in place, both on the `s3gw` repository's `main`
+      branch and on the `s3gw-vX.Y` branch.
+
+## [Testing](testing)
+
+- [ ] Smoke tests pass [^11]
+
+... To be expanded in the future, or maybe link to a proper testing document.
+
+- - -
 
 [^1]:
     For example, for a `v0.11.0` release, for the `s3gw`
@@ -330,23 +375,7 @@ release candidate was properly validated, version `vX.Y.1` was released.
 [7]: https://git-scm.com/book/en/v2/Git-Basics-Tagging
 [8]: https://github.com/aquarist-labs/s3gw/wiki/Current-CHANGELOG
 [9]: https://github.com/aquarist-labs/s3gw/releases
-
-### [Sanity Checks](sanity-checks)
-
-- [ ] `s3gw` container has been published on Quay for `vX.Y.Z`.
-- [ ] `s3gw-ui` container has been published on Quay for `vX.Y.Z`.
-- [ ] both containers are appropriately tagged with `vX.Y.Z` on Quay.
-- [ ] both containers are tagged with `latest` on Quay.
-- [ ] `latest` version containers are the same as the `vX.Y.Z` containers on
-      Quay.
-- [ ] Helm Chart has been properly updated for `vX.Y.Z`.
-- [ ] Helm Chart for `vX.Y.Z` is visible on [ArtifactHub][10]. This can take
-      about 20 minutes.
-- [ ] The release notes are in place, both on the `s3gw` repository's `main`
-      branch and on the `s3gw-vX.Y` branch.
-
 [10]: https://artifacthub.io/packages/helm/s3gw/s3gw
-
-## [Testing](testing)
-
-To be expanded in the future, or maybe link to a proper testing document.
+[^11]:
+    In the `ceph` repository, run the script
+    `qa/rgw/store/sfs/tests/sfs-smoke-test.sh` against the s3gw container
